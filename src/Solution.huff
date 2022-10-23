@@ -1,0 +1,50 @@
+
+#define macro MAIN() = takes(0) returns(0) {
+   // check if calldata is greater than 0
+   0x00 calldatasize sgt
+   non_zero jumpi
+
+   // if we're here, calldatasize is zero: empty return
+   0x00 0x00 return
+
+   non_zero:
+      // check if calldata is of length 1
+      0x01 calldatasize sgt
+      non_one jumpi
+
+      // if we're here, calldata was of size 1, just return it
+      0x00 calldataload
+      0x00 mstore
+      0x01 0x00 return
+
+      non_one:
+         // push loop counter to stack (initializing it to 0 in the process)
+         0x00
+
+         // start looping and reversing the calldata
+         loop:
+            // push on stack the size of data to be copied with calldatacopy
+            0x01
+
+            // get offset from which to copy calldata by getting the calldatasize
+            // - (current loop counter + 1) 
+            dup2 0x01 add
+            calldatasize sub 
+
+            // the location where to put the copied byte is the same as 
+            // the loop counter, duplicate it to get the dest param 
+            // of calldatacopy leaving the original counter untouched
+            dup3
+
+            calldatacopy
+
+            // update loop counter
+            0x01 add
+
+         // check if we've reached the end of the calldata
+         calldatasize dup2 slt
+         loop jumpi
+
+         // return final result
+         0x00 return
+}
