@@ -1,50 +1,30 @@
+# define macro 
 
 #define macro MAIN() = takes(0) returns(0) {
-   // check if calldata is greater than 0
-   0x00 calldatasize sgt
-   non_zero jumpi
-
-   // if we're here, calldatasize is zero: empty return
+   calldatasize non_zero jumpi
    0x00 0x00 return
 
    non_zero:
-      // check if calldata is of length 1
-      0x01 calldatasize sgt
-      non_one jumpi
+      0x00 // [loop_counter]
+      loop:
+         0x01 // [loop_counter, calldatacopy_size]
+         dup2 // [loop_counter, calldatacopy_size, loop_counter_copy]
+         0x01 // [loop_counter, calldatacopy_size, loop_counter_copy, 1]
+         add // [loop_counter, calldatacopy_size, loop_counter_plus_1]
+         calldatasize // [loop_counter, calldatacopy_size, loop_counter_plus_1, calldata_size]
+         sub // [loop_counter, calldatacopy_size, calldatacopy_index]
+         dup3 // [loop_counter, calldatacopy_size, calldatacopy_index, calldatacopy_dest_offset]
+         calldatacopy // [loop_counter]
+         0x01 // [loop_counter, 0x01] 
+         add // [increased_loop_counter]
 
-      // if we're here, calldata was of size 1, just return it
-      0x00 calldataload
-      0x00 mstore
-      0x01 0x00 return
+      calldatasize // [increased_loop_counter, calldata_size]
+      dup2 // [increased_loop_counter, calldata_size, increased_loop_counter_copy]
+      slt // [increased_loop_counter, increased_loop_counter_copy < calldata_size]
+      loop jumpi
 
-      non_one:
-         // push loop counter to stack (initializing it to 0 in the process)
-         0x00
-
-         // start looping and reversing the calldata
-         loop:
-            // push on stack the size of data to be copied with calldatacopy
-            0x01
-
-            // get offset from which to copy calldata by getting the calldatasize
-            // - (current loop counter + 1) 
-            dup2 0x01 add
-            calldatasize sub 
-
-            // the location where to put the copied byte is the same as 
-            // the loop counter, duplicate it to get the dest param 
-            // of calldatacopy leaving the original counter untouched
-            dup3
-
-            calldatacopy
-
-            // update loop counter
-            0x01 add
-
-         // check if we've reached the end of the calldata
-         calldatasize dup2 slt
-         loop jumpi
-
-         // return final result
-         0x00 return
+      // before returning, the stack only contains the updated loop counter 
+      // (the read calldata length in bytes) which becomes the first parameter 
+      // in the return opcode
+      0x00 return
 }
